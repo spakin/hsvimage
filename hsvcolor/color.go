@@ -88,7 +88,8 @@ func (c NHSVA) RGBA() (r, g, b, a uint32) {
 	a16 := uint32(c.A) // 16-bit alpha in a 32-bit field
 	a16 |= a16 << 8
 	if c.S == 0 {
-		return v16, v16, v16, a16
+		v16pm := (v16*a16 + 32768) / 65535
+		return v16pm, v16pm, v16pm, a16
 	}
 
 	// We work with float64 values primarily out of laziness: most of the
