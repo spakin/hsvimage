@@ -3,11 +3,12 @@
 package hsvcolor
 
 import (
+	"image/color"
 	"testing"
 )
 
-// TestGraysToRGB confirms that we can convert grayscale HSV values to RGB.
-func TestGraysToRGB(t *testing.T) {
+// TestGrayHSVToRGB confirms that we can convert grayscale HSV values to RGB.
+func TestGrayHSVToRGB(t *testing.T) {
 	for vi := uint32(0); vi <= 255; vi++ {
 		v := uint8(vi)
 		hsv := NHSVA{0, 0, v, 255}
@@ -20,13 +21,12 @@ func TestGraysToRGB(t *testing.T) {
 	}
 }
 
-// TestGraysToRGBA confirms that we can convert grayscale HSV values to RGB in
-// the context of partial transparency.
-func TestGraysToRGBA(t *testing.T) {
+// TestGrayHSVToRGBA confirms that we can convert grayscale HSV values to RGB
+// in the context of partial transparency.
+func TestGrayHSVToRGBA(t *testing.T) {
 	for ai := uint32(0); ai <= 255; ai += 15 {
 		a := uint8(ai)
 		for vi := uint32(0); vi <= 255; vi += 15 {
-			t.Logf("TESTING {%d, %d}", vi, ai) // Temporary
 			v := uint8(vi)
 			hsv := NHSVA{0, 0, v, a}
 			rp32, gp32, bp32, a32 := hsv.RGBA() // Premultiplied colors
@@ -46,6 +46,17 @@ func TestGraysToRGBA(t *testing.T) {
 				t.Fatalf("Incorrectly mapped %#v to {%d, %d, %d, %d}",
 					hsv, r, g, b, a32>>8)
 			}
+		}
+	}
+}
+
+// TestGrayToHSV confirms that we can convert grayscale values to HSV.
+func TestGrayToHSV(t *testing.T) {
+	for vi := uint32(0); vi <= 255; vi++ {
+		g := color.Gray{uint8(vi)}
+		hsv := NHSVAModel.Convert(g).(NHSVA)
+		if hsv.H != 0 || hsv.S != 0 || hsv.V != g.Y || hsv.A != 255 {
+			t.Fatalf("Incorrectly mapped %#v to %#v", g, hsv)
 		}
 	}
 }

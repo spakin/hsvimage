@@ -80,6 +80,9 @@ func nhsvaModel(c color.Color) color.Color {
 	return NHSVA{uint8(h >> 8), uint8(s >> 8), uint8(v >> 8), uint8(a >> 8)}
 }
 
+// An NHSVAModel is a model for NHSVA colors.
+var NHSVAModel color.Model = color.ModelFunc(nhsvaModel)
+
 // RGBA converts an NHSVA color to alpha-premultiplied RGBA.
 func (c NHSVA) RGBA() (r, g, b, a uint32) {
 	// Handle the easy case: a grayscale value.
