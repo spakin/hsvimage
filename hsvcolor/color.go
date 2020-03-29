@@ -83,12 +83,12 @@ func nhsvaModel(c color.Color) color.Color {
 // RGBA converts an NHSVA color to alpha-premultiplied RGBA.
 func (c NHSVA) RGBA() (r, g, b, a uint32) {
 	// Handle the easy case: a grayscale value.
-	s16 := uint32(c.S) // 16-bit saturation in a 32-bit field
-	s16 |= s16 << 8
+	v16 := uint32(c.V) // 16-bit value in a 32-bit field
+	v16 |= v16 << 8
 	a16 := uint32(c.A) // 16-bit alpha in a 32-bit field
 	a16 |= a16 << 8
-	if s16 == 0 {
-		return s16, s16, s16, a16
+	if c.S == 0 {
+		return v16, v16, v16, a16
 	}
 
 	// We work with float64 values primarily out of laziness: most of the
