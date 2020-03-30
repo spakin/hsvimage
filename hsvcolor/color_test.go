@@ -94,3 +94,25 @@ func TestNRGBToNHSV(t *testing.T) {
 		}
 	}
 }
+
+// TestNRGBAToNHSVA confirms that we can convert non-premultiplied RGB to
+// non-premultiplied HSV, with transparency preserved.
+func TestNRGBAToNHSVA(t *testing.T) {
+	for ai := uint32(0); ai <= 255; ai += 15 {
+		a := uint8(ai)
+		for _, cEq := range colorEquivalences {
+			nrgba := color.NRGBA{cEq.RGB[0], cEq.RGB[1], cEq.RGB[2], a}
+			nhsva := NHSVAModel.Convert(nrgba).(NHSVA)
+			if a == 0 {
+				// Special case for fully transparent colors
+				if nhsva.H != 0 || nhsva.S != 0 || nhsva.V != 0 || nhsva.A != 0 {
+					t.Fatalf("Incorrectly mapped %s from %v to %v (expected [0, 0, 0, 0])", cEq.Name, nrgba, nhsva)
+				}
+				continue
+			}
+			if nhsva.H != cEq.HSV[0] || nhsva.S != cEq.HSV[1] || nhsva.V != cEq.HSV[2] || nhsva.A != a {
+				t.Fatalf("Incorrectly mapped %s from %v to %v (expected %v + %d)", cEq.Name, nrgba, nhsva, cEq.HSV, a)
+			}
+		}
+	}
+}

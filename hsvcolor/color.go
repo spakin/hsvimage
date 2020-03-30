@@ -49,6 +49,11 @@ func nhsvaModel(c color.Color) color.Color {
 		return NHSVA{0, 0, 0, 0}
 	}
 
+	// Convert from premultiplied RGBA to non-premultiplied RGBA.
+	r = (r * 65535) / a
+	g = (g * 65535) / a
+	b = (b * 65535) / a
+
 	// Compute the easy channels: saturation and value.
 	cMin := min3uint32(r, g, b)
 	cMax := max3uint32(r, g, b)
