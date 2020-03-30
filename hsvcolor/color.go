@@ -56,7 +56,7 @@ func nhsvaModel(c color.Color) color.Color {
 	v := cMax
 	var s uint32
 	if cMax > 0 {
-		s = (255 * delta) / cMax
+		s = (65535 * delta) / cMax
 	}
 
 	// Compute hue.
@@ -73,8 +73,8 @@ func nhsvaModel(c color.Color) color.Color {
 	case b:
 		h360 = (60*(ri-gi))/di + 240
 	}
-	h360 = (h360 + 360) % 360      // Make positive.
-	h := uint8((h360 * 255) / 359) // Scale to [0, 255].
+	h360 = (h360 + 360) % 360             // Make positive.
+	h := uint32((h360*65536 + 180) / 360) // Scale to [0, 65535].
 
 	// Return an NHSVA color.
 	return NHSVA{uint8(h >> 8), uint8(s >> 8), uint8(v >> 8), uint8(a >> 8)}

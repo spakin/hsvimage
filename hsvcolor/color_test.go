@@ -60,3 +60,37 @@ func TestGrayToHSV(t *testing.T) {
 		}
 	}
 }
+
+// An rgbHSVassoc associates an RGB color with an HSV color.
+type rgbHSVassoc struct {
+	Name string
+	RGB  [3]uint8
+	HSV  [3]uint8
+}
+
+// colorEquivalences associates RGB with HSV values.  In this form, all color
+// channels lie in [0, 255].
+var colorEquivalences = []rgbHSVassoc{
+	{"black", [3]uint8{0, 0, 0}, [3]uint8{0, 0, 0}},
+	{"white", [3]uint8{255, 255, 255}, [3]uint8{0, 0, 255}},
+	{"red", [3]uint8{255, 0, 0}, [3]uint8{0, 255, 255}},
+	{"green", [3]uint8{0, 255, 0}, [3]uint8{(120 * 256) / 360, 255, 255}},
+	{"blue", [3]uint8{0, 0, 255}, [3]uint8{(240 * 256) / 360, 255, 255}},
+	{"yellow", [3]uint8{255, 255, 0}, [3]uint8{(60 * 256) / 360, 255, 255}},
+	{"cyan", [3]uint8{0, 255, 255}, [3]uint8{(180 * 256) / 360, 255, 255}},
+	{"magenta", [3]uint8{255, 0, 255}, [3]uint8{(300 * 256) / 360, 255, 255}},
+	{"dark blue", [3]uint8{0, 0, 128}, [3]uint8{(240 * 256) / 360, 255, 128}},
+	{"pale yellow", [3]uint8{255, 255, 192}, [3]uint8{(60 * 256) / 360, 63, 255}},
+}
+
+// TestNRGBToNHSV confirms that we can convert non-premultiplied RGB to
+// non-premultiplied HSV, with no transparency in either.
+func TestNRGBToNHSV(t *testing.T) {
+	for _, cEq := range colorEquivalences {
+		nrgba := color.NRGBA{cEq.RGB[0], cEq.RGB[1], cEq.RGB[2], 255}
+		nhsva := NHSVAModel.Convert(nrgba).(NHSVA)
+		if nhsva.H != cEq.HSV[0] || nhsva.S != cEq.HSV[1] || nhsva.V != cEq.HSV[2] || nhsva.A != 255 {
+			t.Fatalf("Incorrectly mapped %s from %v to %v (expected %v)", cEq.Name, nrgba, nhsva, cEq.HSV)
+		}
+	}
+}
