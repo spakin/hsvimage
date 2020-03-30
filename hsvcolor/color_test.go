@@ -74,13 +74,13 @@ var colorEquivalences = []rgbHSVassoc{
 	{"black", [3]uint8{0, 0, 0}, [3]uint8{0, 0, 0}},
 	{"white", [3]uint8{255, 255, 255}, [3]uint8{0, 0, 255}},
 	{"red", [3]uint8{255, 0, 0}, [3]uint8{0, 255, 255}},
-	{"green", [3]uint8{0, 255, 0}, [3]uint8{(120 * 256) / 360, 255, 255}},
-	{"blue", [3]uint8{0, 0, 255}, [3]uint8{(240 * 256) / 360, 255, 255}},
-	{"yellow", [3]uint8{255, 255, 0}, [3]uint8{(60 * 256) / 360, 255, 255}},
-	{"cyan", [3]uint8{0, 255, 255}, [3]uint8{(180 * 256) / 360, 255, 255}},
-	{"magenta", [3]uint8{255, 0, 255}, [3]uint8{(300 * 256) / 360, 255, 255}},
-	{"dark blue", [3]uint8{0, 0, 128}, [3]uint8{(240 * 256) / 360, 255, 128}},
-	{"pale yellow", [3]uint8{255, 255, 192}, [3]uint8{(60 * 256) / 360, 63, 255}},
+	{"green", [3]uint8{0, 255, 0}, [3]uint8{85, 255, 255}},
+	{"blue", [3]uint8{0, 0, 255}, [3]uint8{170, 255, 255}},
+	{"yellow", [3]uint8{255, 255, 0}, [3]uint8{43, 255, 255}},
+	{"cyan", [3]uint8{0, 255, 255}, [3]uint8{128, 255, 255}},
+	{"magenta", [3]uint8{255, 0, 255}, [3]uint8{213, 255, 255}},
+	{"dark blue", [3]uint8{0, 0, 128}, [3]uint8{170, 255, 128}},
+	{"pale yellow", [3]uint8{255, 255, 192}, [3]uint8{43, 63, 255}},
 }
 
 // TestNRGBToNHSV confirms that we can convert non-premultiplied RGB to
@@ -113,6 +113,22 @@ func TestNRGBAToNHSVA(t *testing.T) {
 			if nhsva.H != cEq.HSV[0] || nhsva.S != cEq.HSV[1] || nhsva.V != cEq.HSV[2] || nhsva.A != a {
 				t.Fatalf("Incorrectly mapped %s from %v to %v (expected %v + %d)", cEq.Name, nrgba, nhsva, cEq.HSV, a)
 			}
+		}
+	}
+}
+
+// TestNHSVToNRGB confirms that we can convert non-premultiplied HSV to
+// non-premultiplied RGB, with no transparency in either.
+func TestNHSVToNRGB(t *testing.T) {
+	for _, cEq := range colorEquivalences {
+		nhsva := NHSVA{cEq.HSV[0], cEq.HSV[1], cEq.HSV[2], 255}
+		r16, g16, b16, a16 := nhsva.RGBA() // Same as non-premultiplied because alpha is 255.
+		r := uint8(r16 >> 8)
+		g := uint8(g16 >> 8)
+		b := uint8(b16 >> 8)
+		a := uint8(a16 >> 8)
+		if r != cEq.RGB[0] || g != cEq.RGB[1] || b != cEq.RGB[2] || a != 255 {
+			t.Fatalf("Incorrectly mapped %s from %v to [%d %d %d %d] (expected %v + 255)", cEq.Name, nhsva, r, g, b, a, cEq.RGB)
 		}
 	}
 }

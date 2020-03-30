@@ -65,10 +65,11 @@ func nhsvaModel(c color.Color) color.Color {
 	}
 
 	// Compute hue.
+	scale := func(n16 uint32) uint8 { return uint8((n16*255 + 32768) / 65535) }
 	if delta == 0 {
-		return NHSVA{0, 0, uint8(v >> 8), uint8(a >> 8)} // Gray + alpha
+		return NHSVA{0, 0, scale(v), scale(a)} // Gray + alpha
 	}
-	var h360 int // Hue in the range [0, 359]
+	var h360 int // Hue in the range [0, 360]
 	ri, gi, bi, di := int(r), int(g), int(b), int(delta)
 	switch cMax {
 	case r:
@@ -79,10 +80,10 @@ func nhsvaModel(c color.Color) color.Color {
 		h360 = (60*(ri-gi))/di + 240
 	}
 	h360 = (h360 + 360) % 360             // Make positive.
-	h := uint32((h360*65536 + 180) / 360) // Scale to [0, 65535].
+	h := uint32((h360*65535 + 180) / 360) // Scale to [0, 65535].
 
 	// Return an NHSVA color.
-	return NHSVA{uint8(h >> 8), uint8(s >> 8), uint8(v >> 8), uint8(a >> 8)}
+	return NHSVA{scale(h), scale(s), scale(v), scale(a)}
 }
 
 // An NHSVAModel is a model for NHSVA colors.
@@ -102,7 +103,7 @@ func (c NHSVA) RGBA() (r, g, b, a uint32) {
 
 	// We work with float64 values primarily out of laziness: most of the
 	// conversion formulas on the Web assume real values.
-	hf := float64(c.H) / 255.0
+	hf := float64(c.H) * 360.0 / 255.0
 	sf := float64(c.S) / 255.0
 	vf := float64(c.V) / 255.0
 	af := float64(c.A) / 255.0
