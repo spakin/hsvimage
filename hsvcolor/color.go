@@ -1,4 +1,4 @@
-// hsvcolor provides HSV color models.
+// Package hsvcolor provides HSV color models.
 package hsvcolor
 
 import (
@@ -86,7 +86,8 @@ func nhsvaModel(c color.Color) color.Color {
 	return NHSVA{scale(h), scale(s), scale(v), scale(a)}
 }
 
-// An NHSVAModel is a model for NHSVA colors.
+// NHSVAModel is a color model for NHSVA (non-alpha-premultiplied hue,
+// saturation, and value plus alpha) colors.
 var NHSVAModel color.Model = color.ModelFunc(nhsvaModel)
 
 // RGBA converts an NHSVA color to alpha-premultiplied RGBA.
