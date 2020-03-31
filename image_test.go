@@ -3,6 +3,7 @@
 package hsvimage
 
 import (
+	"github.com/spakin/hsvimage/hsvcolor"
 	"image"
 	"image/color"
 	"testing"
@@ -51,4 +52,56 @@ func TestImage(t *testing.T) {
 	m.SubImage(image.Rect(10, 0, 10, 0))
 	m.SubImage(image.Rect(0, 10, 0, 10))
 	m.SubImage(image.Rect(10, 10, 10, 10))
+}
+
+// TestSimpleColors checks that we can create an NHSVA image with simple,
+// easily convertible colors and read the pixels back as RGBA.
+func TestSimpleColors(t *testing.T) {
+	// Define the set of colors to use in the image.
+	hsvColors := []hsvcolor.NHSVA{
+		{0, 0, 0, 255},       // Black
+		{0, 0, 255, 255},     // White
+		{0, 255, 255, 255},   // Red
+		{85, 255, 255, 255},  // Green
+		{170, 255, 255, 255}, // Blue
+	}
+	rgbColors := []color.RGBA{
+		{0, 0, 0, 255},       // Black
+		{255, 255, 255, 255}, // White
+		{255, 0, 0, 255},     // Red
+		{0, 255, 0, 255},     // Green
+		{0, 0, 255, 255},     // Blue
+	}
+	nc := len(hsvColors)
+
+	// Draw an image with NHSVA colors.
+	const wd = 100
+	const ht = 100
+	img := NewNHSVA(image.Rect(0, 0, wd, ht))
+	i := 0
+	for y := 0; y < ht; y++ {
+		for x := 0; x < wd; x++ {
+			cwHSV := hsvColors[i%nc]
+			img.Set(x, y, cwHSV)
+			i++
+		}
+	}
+
+	// Check that the RGBA colors we read are as expected.
+	i = 0
+	for y := 0; y < ht; y++ {
+		for x := 0; x < wd; x++ {
+			cwHSV := hsvColors[i%nc]
+			crHSV := img.NHSVAAt(x, y)
+			if crHSV != cwHSV {
+				t.Fatalf("Wrote %v but read %v at (%d, %d)", cwHSV, crHSV, x, y)
+			}
+			r, g, b, a := img.At(x, y).RGBA()
+			crRGB := color.RGBA{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), uint8(a >> 8)}
+			if crRGB != rgbColors[i%nc] {
+				t.Fatalf("Expected %v but saw %v at (%d, %d)", rgbColors[i%nc], crRGB, x, y)
+			}
+			i++
+		}
+	}
 }

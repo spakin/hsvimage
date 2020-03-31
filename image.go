@@ -1,5 +1,5 @@
 /*
-hsvimage implements the image.Image interface with HSV + alpha images.
+Package hsvimage implements the image.Image interface with HSV + alpha images.
 Most of this code was adapted from code in the Go standard library.
 */
 package hsvimage
