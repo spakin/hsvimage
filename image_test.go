@@ -64,6 +64,11 @@ func TestSimpleColors(t *testing.T) {
 		{H: 0, S: 255, V: 255, A: 255},   // Red
 		{H: 85, S: 255, V: 255, A: 255},  // Green
 		{H: 170, S: 255, V: 255, A: 255}, // Blue
+		{H: 43, S: 255, V: 255, A: 255},  // Yellow
+		{H: 0, S: 255, V: 255, A: 128},   // Half-transparent red
+		{H: 85, S: 64, V: 255, A: 255},   // Pale green
+		{H: 170, S: 255, V: 64, A: 255},  // Dark blue
+		{H: 205, S: 82, V: 143, A: 255},  // French lilac
 	}
 	rgbColors := []color.RGBA{
 		{R: 0, G: 0, B: 0, A: 255},       // Black
@@ -71,6 +76,11 @@ func TestSimpleColors(t *testing.T) {
 		{R: 255, G: 0, B: 0, A: 255},     // Red
 		{R: 0, G: 255, B: 0, A: 255},     // Green
 		{R: 0, G: 0, B: 255, A: 255},     // Blue
+		{R: 252, G: 255, B: 0, A: 255},   // Yellow (with rounding error)
+		{R: 128, G: 0, B: 0, A: 128},     // Half-transparent red
+		{R: 191, G: 255, B: 191, A: 255}, // Pale green
+		{R: 0, G: 0, B: 64, A: 255},      // Dark blue
+		{R: 135, G: 97, B: 143, A: 255},  // French lilac (with rounding error)
 	}
 	nc := len(hsvColors)
 
