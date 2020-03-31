@@ -1,6 +1,6 @@
 /*
 Package hsvimage implements the image.Image interface with HSV + alpha images.
-Most of this code was adapted from code in the Go standard library.
+This code was largely adapted from code in the Go standard library.
 */
 package hsvimage
 
@@ -21,21 +21,26 @@ type NHSVA struct {
 	Rect image.Rectangle
 }
 
+// ColorModel states that an NHSVA image uses the NHSVA color model.
 func (p *NHSVA) ColorModel() color.Model { return hsvcolor.NHSVAModel }
 
+// Bounds returns the image's bounding rectangle.
 func (p *NHSVA) Bounds() image.Rectangle { return p.Rect }
 
+// At returns the color at the given image coordinates.
 func (p *NHSVA) At(x, y int) color.Color {
 	return p.NHSVAAt(x, y)
 }
 
+// NHSVAAt returns the color at the given image coordinates as specifically an
+// hsvcolor.NHSVA color.
 func (p *NHSVA) NHSVAAt(x, y int) hsvcolor.NHSVA {
 	if !(image.Point{x, y}.In(p.Rect)) {
 		return hsvcolor.NHSVA{}
 	}
 	i := p.PixOffset(x, y)
 	s := p.Pix[i : i+4 : i+4] // Small cap improves performance, see https://golang.org/issue/27857
-	return hsvcolor.NHSVA{s[0], s[1], s[2], s[3]}
+	return hsvcolor.NHSVA{H: s[0], S: s[1], V: s[2], A: s[3]}
 }
 
 // PixOffset returns the index of the first element of Pix that corresponds to
@@ -44,6 +49,7 @@ func (p *NHSVA) PixOffset(x, y int) int {
 	return (y-p.Rect.Min.Y)*p.Stride + (x-p.Rect.Min.X)*4
 }
 
+// Set assigns an arbitrary color to a given coordinate.
 func (p *NHSVA) Set(x, y int, c color.Color) {
 	if !(image.Point{x, y}.In(p.Rect)) {
 		return
@@ -56,6 +62,8 @@ func (p *NHSVA) Set(x, y int, c color.Color) {
 	s[2] = c1.V
 	s[3] = c1.A
 }
+
+// SetNHSVA assigns an NHSVA color to a given coordinate.
 func (p *NHSVA) SetNHSVA(x, y int, c hsvcolor.NHSVA) {
 	if !(image.Point{x, y}.In(p.Rect)) {
 		return

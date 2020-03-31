@@ -59,18 +59,18 @@ func TestImage(t *testing.T) {
 func TestSimpleColors(t *testing.T) {
 	// Define the set of colors to use in the image.
 	hsvColors := []hsvcolor.NHSVA{
-		{0, 0, 0, 255},       // Black
-		{0, 0, 255, 255},     // White
-		{0, 255, 255, 255},   // Red
-		{85, 255, 255, 255},  // Green
-		{170, 255, 255, 255}, // Blue
+		{H: 0, S: 0, V: 0, A: 255},       // Black
+		{H: 0, S: 0, V: 255, A: 255},     // White
+		{H: 0, S: 255, V: 255, A: 255},   // Red
+		{H: 85, S: 255, V: 255, A: 255},  // Green
+		{H: 170, S: 255, V: 255, A: 255}, // Blue
 	}
 	rgbColors := []color.RGBA{
-		{0, 0, 0, 255},       // Black
-		{255, 255, 255, 255}, // White
-		{255, 0, 0, 255},     // Red
-		{0, 255, 0, 255},     // Green
-		{0, 0, 255, 255},     // Blue
+		{R: 0, G: 0, B: 0, A: 255},       // Black
+		{R: 255, G: 255, B: 255, A: 255}, // White
+		{R: 255, G: 0, B: 0, A: 255},     // Red
+		{R: 0, G: 255, B: 0, A: 255},     // Green
+		{R: 0, G: 0, B: 255, A: 255},     // Blue
 	}
 	nc := len(hsvColors)
 
