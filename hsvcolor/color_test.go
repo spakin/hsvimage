@@ -144,7 +144,7 @@ func TestNHSVToNRGB(t *testing.T) {
 }
 
 // TestNHSVAToNRGBA confirms that we can convert non-premultiplied HSV to
-// premultiplied RGB.
+// premultiplied RGB, with transparency preserved.
 func TestNHSVAToNRGBA(t *testing.T) {
 	for ai := uint32(0); ai <= 255; ai += 15 {
 		aOrig := uint8(ai)
