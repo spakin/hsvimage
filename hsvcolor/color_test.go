@@ -120,6 +120,17 @@ func TestNRGBAToNHSVA(t *testing.T) {
 // TestNHSVToNRGB confirms that we can convert non-premultiplied HSV to
 // non-premultiplied RGB, with no transparency in either.
 func TestNHSVToNRGB(t *testing.T) {
+	// Because HSV to RGB conversions are inexact, we define a
+	// "close enough" metric.
+	near := func(a uint8, b uint8) bool {
+		diff := int(a) - int(b)
+		if diff < 0 {
+			diff = -diff
+		}
+		return diff < 4
+	}
+
+	// Test a selection of color conversions for being close enough.
 	for _, cEq := range colorEquivalences {
 		nhsva := NHSVA{cEq.HSV[0], cEq.HSV[1], cEq.HSV[2], 255}
 		r16, g16, b16, a16 := nhsva.RGBA() // Same as non-premultiplied because alpha is 255.
@@ -127,7 +138,7 @@ func TestNHSVToNRGB(t *testing.T) {
 		g := uint8(g16 >> 8)
 		b := uint8(b16 >> 8)
 		a := uint8(a16 >> 8)
-		if r != cEq.RGB[0] || g != cEq.RGB[1] || b != cEq.RGB[2] || a != 255 {
+		if !near(r, cEq.RGB[0]) || !near(g, cEq.RGB[1]) || !near(b, cEq.RGB[2]) || a != 255 {
 			t.Fatalf("Incorrectly mapped %s from %v to [%d %d %d %d] (expected %v + 255)", cEq.Name, nhsva, r, g, b, a, cEq.RGB)
 		}
 	}
