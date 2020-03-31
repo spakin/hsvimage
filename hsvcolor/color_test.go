@@ -117,20 +117,19 @@ func TestNRGBAToNHSVA(t *testing.T) {
 	}
 }
 
+// Because color conversions with 8-bit color channels are inexact, we define a
+// "close enough" metric.
+func near(a uint8, b uint8) bool {
+	diff := int(a) - int(b)
+	if diff < 0 {
+		diff = -diff
+	}
+	return diff < 4
+}
+
 // TestNHSVToNRGB confirms that we can convert non-premultiplied HSV to
 // non-premultiplied RGB, with no transparency in either.
 func TestNHSVToNRGB(t *testing.T) {
-	// Because HSV to RGB conversions are inexact, we define a
-	// "close enough" metric.
-	near := func(a uint8, b uint8) bool {
-		diff := int(a) - int(b)
-		if diff < 0 {
-			diff = -diff
-		}
-		return diff < 4
-	}
-
-	// Test a selection of color conversions for being close enough.
 	for _, cEq := range colorEquivalences {
 		nhsva := NHSVA{cEq.HSV[0], cEq.HSV[1], cEq.HSV[2], 255}
 		r16, g16, b16, a16 := nhsva.RGBA() // Same as non-premultiplied because alpha is 255.
@@ -140,6 +139,34 @@ func TestNHSVToNRGB(t *testing.T) {
 		a := uint8(a16 >> 8)
 		if !near(r, cEq.RGB[0]) || !near(g, cEq.RGB[1]) || !near(b, cEq.RGB[2]) || a != 255 {
 			t.Fatalf("Incorrectly mapped %s from %v to [%d %d %d %d] (expected %v + 255)", cEq.Name, nhsva, r, g, b, a, cEq.RGB)
+		}
+	}
+}
+
+// TestNHSVAToNRGBA confirms that we can convert non-premultiplied HSV to
+// premultiplied RGB.
+func TestNHSVAToNRGBA(t *testing.T) {
+	for ai := uint32(0); ai <= 255; ai += 15 {
+		aOrig := uint8(ai)
+		for _, cEq := range colorEquivalences {
+			nhsva := NHSVA{cEq.HSV[0], cEq.HSV[1], cEq.HSV[2], aOrig}
+			rp16, gp16, bp16, a16 := nhsva.RGBA()
+			if a16 == 0 {
+				// Special case for fully transparent colors.
+				if rp16 != 0 || gp16 != 0 || bp16 != 0 || aOrig != 0 {
+					t.Fatalf("Incorrectly mapped full-transparent %s from %v to [%d %d %d %d] (expected [0 0 0 0])", cEq.Name, nhsva, rp16, gp16, bp16, a16)
+				}
+				continue
+			}
+			var r, g, b uint8
+			a := uint8(a16 >> 8)
+			a16half := a16 / 2
+			r = uint8((255*rp16 + a16half) / a16)
+			g = uint8((255*gp16 + a16half) / a16)
+			b = uint8((255*bp16 + a16half) / a16)
+			if !near(r, cEq.RGB[0]) || !near(g, cEq.RGB[1]) || !near(b, cEq.RGB[2]) || a != aOrig {
+				t.Fatalf("Incorrectly mapped %s from %v to [%d %d %d %d] (expected %v + 255)", cEq.Name, nhsva, r, g, b, a, cEq.RGB)
+			}
 		}
 	}
 }
