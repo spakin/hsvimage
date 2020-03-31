@@ -1,6 +1,6 @@
 /*
 Package hsvimage implements the image.Image interface with HSV + alpha images.
-This code was largely adapted from code in the Go standard library.
+The code was largely adapted from code in the Go standard library.
 */
 package hsvimage
 
@@ -10,7 +10,7 @@ import (
 	"image/color"
 )
 
-// NHSVA is an in-memory image whose At method returns NHSVA values.
+// NHSVA is an in-memory image whose At method returns hsvcolor.NHSVA values.
 type NHSVA struct {
 	// Pix holds the image's pixels, in H, S, V, A order. The pixel at
 	// (x, y) starts at Pix[(y-Rect.Min.Y)*Stride + (x-Rect.Min.X)*4].
@@ -21,7 +21,7 @@ type NHSVA struct {
 	Rect image.Rectangle
 }
 
-// ColorModel states that an NHSVA image uses the NHSVA color model.
+// ColorModel states that an NHSVA image uses the hsvcolor.NHSVA color model.
 func (p *NHSVA) ColorModel() color.Model { return hsvcolor.NHSVAModel }
 
 // Bounds returns the image's bounding rectangle.
