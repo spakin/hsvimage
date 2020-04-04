@@ -6,14 +6,6 @@ import (
 	"math"
 )
 
-// NHSVA represents a non-alpha-premultiplied 32-bit HSV color.  Note that all
-// color channels range from 0 to 255.  (It is more common for hue to range
-// from 0 to 359 and saturation and value to range from 0 to 1, but that's not
-// what we do here.)
-type NHSVA struct {
-	H, S, V, A uint8
-}
-
 // min3uint32 returns the minimum of three uint32 values.
 func min3uint32(a, b, c uint32) uint32 {
 	m := a
@@ -36,6 +28,53 @@ func max3uint32(a, b, c uint32) uint32 {
 		m = c
 	}
 	return m
+}
+
+// nhsvaFloat64ToRGBA is a helper function for NHSVA.RGBA and NHSVA64.RGBA that
+// converts float64 versions of H, S, V, and A to RGBA.
+func nhsvaFloat64ToRGBA(hf, sf, vf, af float64) (r uint32, g uint32, b uint32, a uint32) {
+	// Follow the textbook formulas for converting HSV to RGB.
+	cf := vf * sf
+	hf6 := hf / 60.0
+	xf := cf * (1.0 - math.Abs(math.Mod(hf6, 2.0)-1.0))
+	var rf, gf, bf float64
+	switch {
+	case hf6 < 0.0:
+		panic("Internal error in RGBA (hf6 too small)")
+	case hf6 <= 1.0:
+		rf, gf, bf = cf, xf, 0.0
+	case hf6 <= 2.0:
+		rf, gf, bf = xf, cf, 0.0
+	case hf6 <= 3.0:
+		rf, gf, bf = 0.0, cf, xf
+	case hf6 <= 4.0:
+		rf, gf, bf = 0.0, xf, cf
+	case hf6 <= 5.0:
+		rf, gf, bf = xf, 0.0, cf
+	case hf6 <= 6.0:
+		rf, gf, bf = cf, 0.0, xf
+	default:
+		panic("Internal error in RGBA (hf6 too large)")
+	}
+	mf := vf - cf
+	rf += mf
+	gf += mf
+	bf += mf
+
+	// Premultiply by alpha then convert from float64 to uint32.
+	r16 := uint32(rf * af * 65535.0)
+	g16 := uint32(gf * af * 65535.0)
+	b16 := uint32(bf * af * 65535.0)
+	a16 := uint32(af * 65535.0)
+	return r16, g16, b16, a16
+}
+
+// NHSVA represents a non-alpha-premultiplied 32-bit HSV color.  Note that all
+// color channels range from 0 to 255.  (It is more common for hue to range
+// from 0 to 359 and saturation and value to range from 0 to 1, but that's not
+// what we do here.)
+type NHSVA struct {
+	H, S, V, A uint8
 }
 
 // nhsvaModel converts an arbitrary color to an NHSVA color.
@@ -108,38 +147,7 @@ func (c NHSVA) RGBA() (r, g, b, a uint32) {
 	sf := float64(c.S) / 255.0
 	vf := float64(c.V) / 255.0
 	af := float64(c.A) / 255.0
-	cf := vf * sf
-	hf6 := hf / 60.0
-	xf := cf * (1.0 - math.Abs(math.Mod(hf6, 2.0)-1.0))
-	var rf, gf, bf float64
-	switch {
-	case hf6 < 0.0:
-		panic("Internal error in RGBA (hf6 too small)")
-	case hf6 <= 1.0:
-		rf, gf, bf = cf, xf, 0.0
-	case hf6 <= 2.0:
-		rf, gf, bf = xf, cf, 0.0
-	case hf6 <= 3.0:
-		rf, gf, bf = 0.0, cf, xf
-	case hf6 <= 4.0:
-		rf, gf, bf = 0.0, xf, cf
-	case hf6 <= 5.0:
-		rf, gf, bf = xf, 0.0, cf
-	case hf6 <= 6.0:
-		rf, gf, bf = cf, 0.0, xf
-	default:
-		panic("Internal error in RGBA (hf6 too large)")
-	}
-	mf := vf - cf
-	rf += mf
-	gf += mf
-	bf += mf
-
-	// Premultiply by alpha then convert from float64 to uint32.
-	r16 := uint32(rf * af * 65535.0)
-	g16 := uint32(gf * af * 65535.0)
-	b16 := uint32(bf * af * 65535.0)
-	return r16, g16, b16, a16
+	return nhsvaFloat64ToRGBA(hf, sf, vf, af)
 }
 
 // NHSVA64 represents a non-alpha-premultiplied 64-bit HSV color.  Note that
@@ -216,36 +224,5 @@ func (c NHSVA64) RGBA() (r, g, b, a uint32) {
 	sf := float64(c.S) / 65535.0
 	vf := float64(c.V) / 65535.0
 	af := float64(c.A) / 65535.0
-	cf := vf * sf
-	hf6 := hf / 60.0
-	xf := cf * (1.0 - math.Abs(math.Mod(hf6, 2.0)-1.0))
-	var rf, gf, bf float64
-	switch {
-	case hf6 < 0.0:
-		panic("Internal error in RGBA (hf6 too small)")
-	case hf6 <= 1.0:
-		rf, gf, bf = cf, xf, 0.0
-	case hf6 <= 2.0:
-		rf, gf, bf = xf, cf, 0.0
-	case hf6 <= 3.0:
-		rf, gf, bf = 0.0, cf, xf
-	case hf6 <= 4.0:
-		rf, gf, bf = 0.0, xf, cf
-	case hf6 <= 5.0:
-		rf, gf, bf = xf, 0.0, cf
-	case hf6 <= 6.0:
-		rf, gf, bf = cf, 0.0, xf
-	default:
-		panic("Internal error in RGBA (hf6 too large)")
-	}
-	mf := vf - cf
-	rf += mf
-	gf += mf
-	bf += mf
-
-	// Premultiply by alpha then convert from float64 to uint32.
-	r16 := uint32(rf * af * 65535.0)
-	g16 := uint32(gf * af * 65535.0)
-	b16 := uint32(bf * af * 65535.0)
-	return r16, g16, b16, a16
+	return nhsvaFloat64ToRGBA(hf, sf, vf, af)
 }
