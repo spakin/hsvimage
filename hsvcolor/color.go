@@ -83,46 +83,18 @@ func nhsvaModel(c color.Color) color.Color {
 	if _, ok := c.(NHSVA); ok {
 		return c
 	}
-	r, g, b, a := c.RGBA() // 32-bit values in the range [0, 65535]
-	if a == 0 {
-		return NHSVA{0, 0, 0, 0}
-	}
 
-	// Convert from premultiplied RGBA to non-premultiplied RGBA.
-	r = (r * 65535) / a
-	g = (g * 65535) / a
-	b = (b * 65535) / a
-
-	// Compute the easy channels: saturation and value.
-	cMin := min3uint32(r, g, b)
-	cMax := max3uint32(r, g, b)
-	delta := cMax - cMin
-	v := cMax
-	var s uint32
-	if cMax > 0 {
-		s = (65535 * delta) / cMax
+	// Produce a 64-bit color then scale it down to 32 bits.
+	nhsva64 := nhsva64Model(c).(NHSVA64)
+	scale := func(n16 uint16) uint8 {
+		return uint8((uint32(n16)*255 + 32768) / 65535)
 	}
-
-	// Compute hue.
-	scale := func(n16 uint32) uint8 { return uint8((n16*255 + 32768) / 65535) }
-	if delta == 0 {
-		return NHSVA{0, 0, scale(v), scale(a)} // Gray + alpha
+	return NHSVA{
+		H: scale(nhsva64.H),
+		S: scale(nhsva64.S),
+		V: scale(nhsva64.V),
+		A: scale(nhsva64.A),
 	}
-	var h360 int // Hue in the range [0, 360]
-	ri, gi, bi, di := int(r), int(g), int(b), int(delta)
-	switch cMax {
-	case r:
-		h360 = (60*(gi-bi))/di + 0
-	case g:
-		h360 = (60*(bi-ri))/di + 120
-	case b:
-		h360 = (60*(ri-gi))/di + 240
-	}
-	h360 = (h360 + 360) % 360             // Make positive.
-	h := uint32((h360*65535 + 180) / 360) // Scale to [0, 65535].
-
-	// Return an NHSVA color.
-	return NHSVA{scale(h), scale(s), scale(v), scale(a)}
 }
 
 // NHSVAModel is a color model for NHSVA (non-alpha-premultiplied hue,
