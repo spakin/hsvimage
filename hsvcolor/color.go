@@ -141,3 +141,111 @@ func (c NHSVA) RGBA() (r, g, b, a uint32) {
 	b16 := uint32(bf * af * 65535.0)
 	return r16, g16, b16, a16
 }
+
+// NHSVA64 represents a non-alpha-premultiplied 64-bit HSV color.  Note that
+// all color channels range from 0 to 655355.  (It is more common for hue to
+// range from 0 to 359 and saturation and value to range from 0 to 1, but
+// that's not what we do here.)
+type NHSVA64 struct {
+	H, S, V, A uint16
+}
+
+// nhsva64Model converts an arbitrary color to an NHSVA64 color.
+func nhsva64Model(c color.Color) color.Color {
+	// Handle the easy cases first: already NHSVA64 and fully transparent.
+	if _, ok := c.(NHSVA64); ok {
+		return c
+	}
+	r, g, b, a := c.RGBA() // 32-bit values in the range [0, 65535]
+	if a == 0 {
+		return NHSVA64{0, 0, 0, 0}
+	}
+
+	// Convert from premultiplied RGBA to non-premultiplied RGBA.
+	r = (r * 65535) / a
+	g = (g * 65535) / a
+	b = (b * 65535) / a
+
+	// Compute the easy channels: saturation and value.
+	cMin := min3uint32(r, g, b)
+	cMax := max3uint32(r, g, b)
+	delta := cMax - cMin
+	v := cMax
+	var s uint32
+	if cMax > 0 {
+		s = (65535 * delta) / cMax
+	}
+
+	// Compute hue.
+	if delta == 0 {
+		return NHSVA64{0, 0, uint16(v), uint16(a)} // Gray + alpha
+	}
+	var h360 int // Hue in the range [0, 360]
+	ri, gi, bi, di := int(r), int(g), int(b), int(delta)
+	switch cMax {
+	case r:
+		h360 = (60*(gi-bi))/di + 0
+	case g:
+		h360 = (60*(bi-ri))/di + 120
+	case b:
+		h360 = (60*(ri-gi))/di + 240
+	}
+	h360 = (h360 + 360) % 360             // Make positive.
+	h := uint32((h360*65535 + 180) / 360) // Scale to [0, 65535].
+
+	// Return an NHSVA color.
+	return NHSVA64{uint16(h), uint16(s), uint16(v), uint16(a)}
+}
+
+// NHSVA64Model is a color model for NHSVA64 (non-alpha-premultiplied hue,
+// saturation, and value plus alpha) colors.
+var NHSVA64Model color.Model = color.ModelFunc(nhsva64Model)
+
+// RGBA converts an NHSVA64 color to alpha-premultiplied RGBA.
+func (c NHSVA64) RGBA() (r, g, b, a uint32) {
+	// Handle the easy case: a grayscale value.
+	a16 := uint32(c.A)
+	if c.S == 0 {
+		v16pm := (uint32(c.V)*a16 + 32768) / 65535
+		return v16pm, v16pm, v16pm, a16
+	}
+
+	// We work with float64 values primarily out of laziness: most of the
+	// conversion formulas on the Web assume real values.
+	hf := float64(c.H) * 360.0 / 65535.0
+	sf := float64(c.S) / 65535.0
+	vf := float64(c.V) / 65535.0
+	af := float64(c.A) / 65535.0
+	cf := vf * sf
+	hf6 := hf / 60.0
+	xf := cf * (1.0 - math.Abs(math.Mod(hf6, 2.0)-1.0))
+	var rf, gf, bf float64
+	switch {
+	case hf6 < 0.0:
+		panic("Internal error in RGBA (hf6 too small)")
+	case hf6 <= 1.0:
+		rf, gf, bf = cf, xf, 0.0
+	case hf6 <= 2.0:
+		rf, gf, bf = xf, cf, 0.0
+	case hf6 <= 3.0:
+		rf, gf, bf = 0.0, cf, xf
+	case hf6 <= 4.0:
+		rf, gf, bf = 0.0, xf, cf
+	case hf6 <= 5.0:
+		rf, gf, bf = xf, 0.0, cf
+	case hf6 <= 6.0:
+		rf, gf, bf = cf, 0.0, xf
+	default:
+		panic("Internal error in RGBA (hf6 too large)")
+	}
+	mf := vf - cf
+	rf += mf
+	gf += mf
+	bf += mf
+
+	// Premultiply by alpha then convert from float64 to uint32.
+	r16 := uint32(rf * af * 65535.0)
+	g16 := uint32(gf * af * 65535.0)
+	b16 := uint32(bf * af * 65535.0)
+	return r16, g16, b16, a16
+}
