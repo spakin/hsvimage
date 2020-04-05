@@ -79,7 +79,7 @@ type NHSVA struct {
 
 // nhsvaModel converts an arbitrary color to an NHSVA color.
 func nhsvaModel(c color.Color) color.Color {
-	// Handle the easy cases first: already NHSVA and fully transparent.
+	// Handle the easy case first: already NHSVA.
 	if _, ok := c.(NHSVA); ok {
 		return c
 	}
@@ -196,5 +196,89 @@ func (c NHSVA64) RGBA() (r, g, b, a uint32) {
 	sf := float64(c.S) / 65535.0
 	vf := float64(c.V) / 65535.0
 	af := float64(c.A) / 65535.0
+	return nhsvaFloat64ToRGBA(hf, sf, vf, af)
+}
+
+// NHSVAF64 represents a non-alpha-premultiplied HSV color with each channel
+// represented by a 64-bit floating-point number.  In this representation, hue
+// is a value in [0, 360); and the remaining channels are values in [0, 1].
+type NHSVAF64 struct {
+	H, S, V, A float64
+}
+
+// nhsvaF64Model converts an arbitrary color to an NHSVAF64 color.
+func nhsvaF64Model(c color.Color) color.Color {
+	// Handle the easy cases first: already NHSVAF64 and fully transparent.
+	if _, ok := c.(NHSVAF64); ok {
+		return c
+	}
+	r, g, b, a := c.RGBA() // 32-bit values in the range [0, 65535]
+	if a == 0 {
+		return NHSVAF64{0.0, 0.0, 0.0, 0.0}
+	}
+
+	// Convert all values to floating point.
+	rf := float64(r) / 65535.0
+	gf := float64(g) / 65535.0
+	bf := float64(b) / 65535.0
+	af := float64(a) / 65535.0
+
+	// Convert from premultiplied RGBA to non-premultiplied RGBA.
+	rf /= af
+	gf /= af
+	bf /= af
+
+	// Compute the easy channels: saturation and value.
+	cMin := math.Min(math.Min(rf, gf), bf)
+	cMax := math.Max(math.Max(rf, gf), bf)
+	delta := cMax - cMin
+	vf := cMax
+	var sf float64
+	if cMax > 0.00 {
+		sf = delta / cMax
+	}
+
+	// Compute hue.
+	if delta == 0.0 {
+		return NHSVAF64{0.0, 0.0, vf, af} // Gray + alpha
+	}
+	var hf float64
+	switch cMax {
+	case rf:
+		hf = (gf-bf)/delta + 0.0
+	case gf:
+		hf = (bf-rf)/delta + 2.0
+	case bf:
+		hf = (rf-gf)/delta + 4.0
+	}
+	hf = math.Mod(hf*60.0+360.0, 360.0)
+
+	// Return an NHSVAF64 color.
+	return NHSVAF64{hf, sf, vf, af}
+}
+
+// NHSVAF64Model is a color model for NHSVAF64 (non-alpha-premultiplied hue,
+// saturation, and value plus alpha, with 64-bit floating-point channels)
+// colors.
+var NHSVAF64Model color.Model = color.ModelFunc(nhsvaF64Model)
+
+// RGBA converts an NHSVAF64 color to alpha-premultiplied RGBA.
+func (c NHSVAF64) RGBA() (r, g, b, a uint32) {
+	// Force all HSVA values into their expected range: [0, 360) for hue
+	// (with wraparound) and [0, 1] for everything else (with clamping).
+	clamp01 := func(x float64) float64 { return math.Max(0.0, math.Min(1.0, x)) }
+	wrap360 := func(x float64) float64 { return math.Mod(math.Mod(x, 360.0)+360.0, 360.0) }
+	hf := wrap360(c.H)
+	sf := clamp01(c.S)
+	vf := clamp01(c.V)
+	af := clamp01(c.A)
+
+	// Handle the easy case: a grayscale value.
+	if sf == 0.0 {
+		v16pm := uint32(vf * af * 65535.0)
+		return v16pm, v16pm, v16pm, uint32(af * 65535.0)
+	}
+
+	// Handle all other cases.
 	return nhsvaFloat64ToRGBA(hf, sf, vf, af)
 }

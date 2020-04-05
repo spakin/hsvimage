@@ -215,3 +215,103 @@ func TestSimpleColors64(t *testing.T) {
 		}
 	}
 }
+
+// TestImageF64 was copied almost literally from the Go standard library's
+// image_test.go file.
+func TestImageF64(t *testing.T) {
+	m := NewNHSVAF64(image.Rect(0, 0, 10, 10))
+	if !image.Rect(0, 0, 10, 10).Eq(m.Bounds()) {
+		t.Fatalf("%T: want bounds %v, got %v", m, image.Rect(0, 0, 10, 10), m.Bounds())
+	}
+	if !cmp(m.ColorModel(), image.Transparent, m.At(6, 3)) {
+		t.Fatalf("%T: at (6, 3), want a zero color, got %v", m, m.At(6, 3))
+	}
+	m.Set(6, 3, image.Opaque)
+	if !cmp(m.ColorModel(), image.Opaque, m.At(6, 3)) {
+		t.Fatalf("%T: at (6, 3), want a non-zero color, got %v", m, m.At(6, 3))
+	}
+	if !m.SubImage(image.Rect(6, 3, 7, 4)).(*NHSVAF64).Opaque() {
+		t.Fatalf("%T: at (6, 3) was not opaque", m)
+	}
+	m = m.SubImage(image.Rect(3, 2, 9, 8)).(*NHSVAF64)
+	if !image.Rect(3, 2, 9, 8).Eq(m.Bounds()) {
+		t.Fatalf("%T: sub-image want bounds %v, got %v", m, image.Rect(3, 2, 9, 8), m.Bounds())
+	}
+	if !cmp(m.ColorModel(), image.Opaque, m.At(6, 3)) {
+		t.Fatalf("%T: sub-image at (6, 3), want a non-zero color, got %v", m, m.At(6, 3))
+	}
+	if !cmp(m.ColorModel(), image.Transparent, m.At(3, 3)) {
+		t.Fatalf("%T: sub-image at (3, 3), want a zero color, got %v", m, m.At(3, 3))
+	}
+	m.Set(3, 3, image.Opaque)
+	if !cmp(m.ColorModel(), image.Opaque, m.At(3, 3)) {
+		t.Fatalf("%T: sub-image at (3, 3), want a non-zero color, got %v", m, m.At(3, 3))
+	}
+	// Test that taking an empty sub-image starting at a corner does not panic.
+	m.SubImage(image.Rect(0, 0, 0, 0))
+	m.SubImage(image.Rect(10, 0, 10, 0))
+	m.SubImage(image.Rect(0, 10, 0, 10))
+	m.SubImage(image.Rect(10, 10, 10, 10))
+}
+
+// TestSimpleColorsF64 checks that we can create an NHSVAF64 image with simple,
+// easily convertible colors and read the pixels back as RGBA.
+func TestSimpleColorsF64(t *testing.T) {
+	// Define the set of colors to use in the image.
+	hsvColors := []hsvcolor.NHSVAF64{
+		{H: 0.0, S: 0.0, V: 0.0, A: 1.0},       // Black
+		{H: 0.0, S: 0.0, V: 1.0, A: 1.0},       // White
+		{H: 0.0, S: 1.0, V: 1.0, A: 1.0},       // Red
+		{H: 120.0, S: 1.0, V: 1.0, A: 1.0},     // Green
+		{H: 240.0, S: 1.0, V: 1.0, A: 1.0},     // Blue
+		{H: 60.0, S: 1.0, V: 1.0, A: 1.0},      // Yellow
+		{H: 0.0, S: 1.0, V: 1.0, A: 0.5},       // Half-transparent red
+		{H: 120.0, S: 0.25, V: 1.0, A: 1.0},    // Pale green
+		{H: 240.0, S: 1.0, V: 0.25, A: 1.0},    // Dark blue
+		{H: 290.0, S: 0.322, V: 0.561, A: 1.0}, // French lilac
+	}
+	rgbColors := []color.RGBA{
+		{R: 0, G: 0, B: 0, A: 255},       // Black
+		{R: 255, G: 255, B: 255, A: 255}, // White
+		{R: 255, G: 0, B: 0, A: 255},     // Red
+		{R: 0, G: 255, B: 0, A: 255},     // Green
+		{R: 0, G: 0, B: 255, A: 255},     // Blue
+		{R: 255, G: 255, B: 0, A: 255},   // Yellow
+		{R: 127, G: 0, B: 0, A: 127},     // Half-transparent red (rounded)
+		{R: 191, G: 255, B: 191, A: 255}, // Pale green
+		{R: 0, G: 0, B: 63, A: 255},      // Dark blue (rounded)
+		{R: 135, G: 97, B: 143, A: 255},  // French lilac
+	}
+	nc := len(hsvColors)
+
+	// Draw an image with NHSVAF64 colors.
+	const wd = 100
+	const ht = 100
+	img := NewNHSVAF64(image.Rect(0, 0, wd, ht))
+	i := 0
+	for y := 0; y < ht; y++ {
+		for x := 0; x < wd; x++ {
+			cwHSV := hsvColors[i%nc]
+			img.Set(x, y, cwHSV)
+			i++
+		}
+	}
+
+	// Check that the RGBA colors we read are as expected.
+	i = 0
+	for y := 0; y < ht; y++ {
+		for x := 0; x < wd; x++ {
+			cwHSV := hsvColors[i%nc]
+			crHSV := img.NHSVAF64At(x, y)
+			if crHSV != cwHSV {
+				t.Fatalf("Wrote %v but read %v at (%d, %d)", cwHSV, crHSV, x, y)
+			}
+			r, g, b, a := img.At(x, y).RGBA()
+			crRGB := color.RGBA{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), uint8(a >> 8)}
+			if crRGB != rgbColors[i%nc] {
+				t.Logf("Expected %v but saw %v at (%d, %d)", rgbColors[i%nc], crRGB, x, y)
+			}
+			i++
+		}
+	}
+}

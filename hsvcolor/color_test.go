@@ -4,6 +4,7 @@ package hsvcolor
 
 import (
 	"image/color"
+	"math"
 	"testing"
 )
 
@@ -335,6 +336,133 @@ func TestNHSVAToNRGBA64(t *testing.T) {
 			b = uint16((65535*bp16 + a16half) / a16)
 			if !near16(r, cEq.RGB[0]) || !near16(g, cEq.RGB[1]) || !near16(b, cEq.RGB[2]) || a != aOrig {
 				t.Fatalf("Incorrectly mapped %s from %v to [%d %d %d %d] (expected %v + %d)", cEq.Name, nhsva, r, g, b, a, cEq.RGB, aOrig)
+			}
+		}
+	}
+}
+
+// TestGrayHSVF64ToRGB confirms that we can convert 64-bit floating-point
+// grayscale HSV values to RGB.
+func TestGrayHSVF64ToRGB(t *testing.T) {
+	for vi := uint32(0); vi <= 65535; vi += 255 {
+		v := uint16(vi)
+		hsv := NHSVAF64{0.0, 0.0, float64(vi) / 65535.0, 1.0}
+		r32, g32, b32, a32 := hsv.RGBA()
+		r, g, b, a := uint16(r32), uint16(g32), uint16(b32), uint16(a32)
+		if r != v || g != v || b != v || a != 65535.0 {
+			t.Fatalf("Incorrectly mapped %#v to {%d, %d, %d, %d}",
+				hsv, r, g, b, a)
+		}
+	}
+}
+
+// TestGrayHSVF64ToRGBA confirms that we can convert grayscale 64-bit
+// floating-point HSV values to RGB in the context of partial transparency.
+func TestGrayHSVF64ToRGBA(t *testing.T) {
+	for ai := uint32(0); ai <= 65535; ai += 3855 {
+		a := uint16(ai)
+		for vi := uint32(0); vi <= 65535; vi += 3855 {
+			v := uint16(vi)
+			hsv := NHSVAF64{0.0, 0.0, float64(vi) / 65535.0, float64(ai) / 65535.0}
+			rp32, gp32, bp32, a32 := hsv.RGBA() // Premultiplied colors
+			var r, g, b uint16                  // Non-premultiplied
+			if a32 != 0 {
+				// Not fully transparent -- divide by alpha and
+				// round.
+				a32half := a32 / 2
+				r = uint16((65535*rp32 + a32half) / a32)
+				g = uint16((65535*gp32 + a32half) / a32)
+				b = uint16((65535*bp32 + a32half) / a32)
+			} else {
+				// Fully transparent -- treat the value as 0.
+				v = 0
+			}
+			if !near16(r, v) || !near16(g, v) || !near16(b, v) || !near16(uint16(a32), a) {
+				t.Fatalf("Incorrectly mapped %#v to {%d, %d, %d, %d}, not {%d, %d, %d, %d}",
+					hsv, r, g, b, a32, v, v, v, a)
+			}
+		}
+	}
+}
+
+// TestGrayToHSVF64 confirms that we can convert grayscale values to 64-bit
+// floating-point HSV.
+func TestGrayToHSVF64(t *testing.T) {
+	for vi := uint32(0); vi <= 65535; vi++ {
+		g := color.Gray16{uint16(vi)}
+		hsv := NHSVAF64Model.Convert(g).(NHSVAF64)
+		if hsv.H != 0.0 || hsv.S != 0.0 || hsv.V != float64(g.Y)/65535.0 || hsv.A != 1.0 {
+			t.Fatalf("Incorrectly mapped %#v to %#v", g, hsv)
+		}
+	}
+}
+
+// An rgbHSVF64assoc associates an RGB color with a 64-bit floating-point HSV
+// color.
+type rgbHSVF64assoc struct {
+	Name string
+	RGB  [3]uint8
+	HSV  [3]float64
+}
+
+// colorEquivalencesF64 associates RGB with 64-bit floating-point HSV values.
+// In this form, all RGB color channels lie in [0, 255], H is in [0, 360), and
+// S and V are in [0, 1].
+var colorEquivalencesF64 = []rgbHSVF64assoc{
+	{"black", [3]uint8{0, 0, 0}, [3]float64{0.0, 0.0, 0.0}},
+	{"white", [3]uint8{255, 255, 255}, [3]float64{0.0, 0.0, 1.0}},
+	{"red", [3]uint8{255, 0, 0}, [3]float64{0.0, 1.0, 1.0}},
+	{"green", [3]uint8{0, 255, 0}, [3]float64{120.0, 1.0, 1.0}},
+	{"blue", [3]uint8{0, 0, 255}, [3]float64{240.0, 1.0, 1.0}},
+	{"yellow", [3]uint8{255, 255, 0}, [3]float64{60.0, 1.0, 1.0}},
+	{"cyan", [3]uint8{0, 255, 255}, [3]float64{180.0, 1.0, 1.0}},
+	{"magenta", [3]uint8{255, 0, 255}, [3]float64{300.0, 1.0, 1.0}},
+	{"dark blue", [3]uint8{0, 0, 128}, [3]float64{240.0, 1.0, 0.5}},
+	{"pale yellow", [3]uint8{255, 255, 192}, [3]float64{60.0, 0.247, 1.0}},
+}
+
+// Because color conversions with 64-bit floating-point color channels are
+// inexact, we define a "close enough" metric.
+func nearF64(a float64, b float64) bool {
+	return math.Abs(a-b) < 0.01
+}
+
+// TestNRGBToNHSVF64 confirms that we can convert non-premultiplied 64-bit RGB
+// to non-premultiplied 64-bit floating-point HSV, with no transparency in
+// either.
+func TestNRGBToNHSVF64(t *testing.T) {
+	for _, cEq := range colorEquivalencesF64 {
+		nrgba := color.NRGBA{cEq.RGB[0], cEq.RGB[1], cEq.RGB[2], 255}
+		nhsva := NHSVAF64Model.Convert(nrgba).(NHSVAF64)
+		if !nearF64(nhsva.H, cEq.HSV[0]) || !nearF64(nhsva.S, cEq.HSV[1]) || !nearF64(nhsva.V, cEq.HSV[2]) || !nearF64(nhsva.A, 1.0) {
+			t.Fatalf("Incorrectly mapped %s from %v to %v (expected %v)", cEq.Name, nrgba, nhsva, cEq.HSV)
+		}
+	}
+}
+
+// TestNHSVAF64ToNRGBA confirms that we can convert non-premultiplied 64-bit
+// floating-point HSV to premultiplied 64-bit RGB, with transparency preserved.
+func TestNHSVAF64ToNRGBA(t *testing.T) {
+	for ai := uint32(0); ai <= 255; ai += 15 {
+		aOrig := float64(ai) / 255.0
+		for _, cEq := range colorEquivalencesF64 {
+			nhsva := NHSVAF64{cEq.HSV[0], cEq.HSV[1], cEq.HSV[2], aOrig}
+			rp16, gp16, bp16, a16 := nhsva.RGBA()
+			if a16 == 0 {
+				// Special case for fully transparent colors.
+				if rp16 != 0 || gp16 != 0 || bp16 != 0 || ai != 0 {
+					t.Fatalf("Incorrectly mapped full-transparent %s from %v to [%d %d %d %d] (expected [0 0 0 0])", cEq.Name, nhsva, rp16, gp16, bp16, a16)
+				}
+				continue
+			}
+			var r, g, b uint8
+			a := uint8(a16 >> 8)
+			a16half := a16 / 2
+			r = uint8((255*rp16 + a16half) / a16)
+			g = uint8((255*gp16 + a16half) / a16)
+			b = uint8((255*bp16 + a16half) / a16)
+			if !near(r, cEq.RGB[0]) || !near(g, cEq.RGB[1]) || !near(b, cEq.RGB[2]) || a != uint8(ai) {
+				t.Fatalf("Incorrectly mapped %s from %v to [%d %d %d %d] (expected %v + %d)", cEq.Name, nhsva, r, g, b, a, cEq.RGB, uint8(ai))
 			}
 		}
 	}
