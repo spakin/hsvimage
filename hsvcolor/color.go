@@ -123,7 +123,7 @@ func (c NHSVA) RGBA() (r, g, b, a uint32) {
 }
 
 // NHSVA64 represents a non-alpha-premultiplied 64-bit HSV color.  Note that
-// all color channels range from 0 to 655355.  (It is more common for hue to
+// all color channels range from 0 to 65535.  (It is more common for hue to
 // range from 0 to 359 and saturation and value to range from 0 to 1, but
 // that's not what we do here.)
 type NHSVA64 struct {
